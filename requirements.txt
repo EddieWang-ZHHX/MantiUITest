@@ -1,0 +1,12 @@
+# UI 自动化测试框架依赖
+playwright==1.42.0
+pytest==8.1.1
+pytest-html==4.1.1
+pytest-xdist==3.5.0
+allure-pytest==2.13.2
+python-dotenv==1.0.1
+pyyaml==6.0.1
+loguru==0.7.2
+pillow==10.2.0
+opencv-python==4.9.0.80
+pyautogui==0.9.54

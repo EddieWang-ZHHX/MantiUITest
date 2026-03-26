@@ -1,0 +1,41 @@
+# 测试账号配置
+
+# 默认账号（信息中心管理员）
+default:
+  username: T100002
+  password: wisedu@1
+  verify_code: 2222
+  user_group: 信息中心管理员
+  description: "默认测试账号 - 信息中心管理员"
+
+# 教师账号
+teacher:
+  - username: T100002
+    password: wisedu@1
+    verify_code: 2222
+    user_group: 信息中心管理员
+    description: "教师账号 1"
+
+# 管理员账号
+admin:
+  - username: admin
+    password: wisedu@1
+    verify_code: 2222
+    user_group: 超级管理员
+    description: "超级管理员账号"
+
+# 人事管理员
+hr_admin:
+  - username: hr_admin
+    password: wisedu@1
+    verify_code: 2222
+    user_group: 人事管理员
+    description: "人事管理员账号"
+
+# 院系管理员
+dept_admin:
+  - username: dept_admin
+    password: wisedu@1
+    verify_code: 2222
+    user_group: 院系管理员
+    description: "院系管理员账号"

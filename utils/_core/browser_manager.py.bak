@@ -1,0 +1,265 @@
+"""浏览器管理工具 - 支持视频录制和证据收集
+
+设计原则：
+- 浏览器（Browser）: session 级，只启动一次，复用
+- 上下文（Context）: function 级，每个测试新建，用完关闭
+- 页面（Page）: function 级，绑定到当前 Context
+
+证据文件命名规范：
+- screenshot.png: 截图
+- video.webm: 视频录制
+- trace.zip: Playwright Trace
+- page.html: 页面 HTML
+"""
+from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page
+from typing import Optional, Dict
+from pathlib import Path
+from config.settings import Settings
+from utils.logger import logger
+import shutil
+
+
+class BrowserManager:
+    """浏览器管理器 - 支持完整的证据收集"""
+    
+    # 固定证据文件名
+    SCREENSHOT = "screenshot.png"
+    VIDEO = "video.webm"
+    TRACE = "trace.zip"
+    PAGE_HTML = "page.html"
+    
+    def __init__(self, settings: Optional[Settings] = None):
+        self.settings = settings or Settings()
+        self.playwright = None
+        self.browser: Optional[Browser] = None
+        self.context: Optional[BrowserContext] = None
+        self.page: Optional[Page] = None
+        self.test_name: str = "unknown"
+        self.evidence_dir: Optional[Path] = None
+        self._trace_started = False
+        self._browser_launched = False
+        self._session_page_created = False
+    
+    def new_page_for_session(self) -> Page:
+        """创建 session 级共享的 Page（只创建一次）
+        
+        整个 session 复用同一个 Page，
+        每个测试自主 navigate 到自己的页面
+        """
+        if self._session_page_created:
+            return self.page
+        
+        self.start_browser("session_shared")
+        
+        evidence_config = self.settings.get('evidence', {})
+        
+        # 准备证据目录（session 共享的目录）
+        self.evidence_dir = Path("reports/evidence/_session_shared")
+        self.evidence_dir.mkdir(parents=True, exist_ok=True)
+        
+        # session 级只创建 context + page，不开启 Trace/视频（节省资源）
+        viewport = self.settings.browser.get('viewport', {'width': 1920, 'height': 1080})
+        self.context = self.browser.new_context(
+            viewport=viewport,
+            ignore_https_errors=True
+        )
+        
+        self.page = self.context.new_page()
+        timeout = self.settings.test.get('timeout', 30000)
+        self.page.set_default_timeout(timeout)
+        
+        if evidence_config.get('console_log', True):
+            self.page.on("console", lambda msg: logger.debug(f" [{msg.type}] {msg.text}"))
+        self.page.on("pageerror", lambda err: logger.error(f"页面错误：{err}"))
+        
+        self._session_page_created = True
+        logger.info("Session shared Page 已创建")
+        return self.page
+    
+    def start_browser(self, test_name: str = "test"):
+        """启动/复用浏览器（session 级，整个 session 只执行一次）
+        
+        首次调用：启动浏览器
+        后续调用：直接返回已有浏览器实例
+        """
+        self.test_name = test_name
+        
+        # 已启动则跳过
+        if self._browser_launched:
+            logger.debug(f"浏览器已存在，复用，测试：{self.test_name}")
+            return
+        
+        self.playwright = sync_playwright().start()
+        browser_config = self.settings.browser
+        browser_name = browser_config.get('name', 'chromium')
+        launcher = getattr(self.playwright, browser_name)
+        
+        self.browser = launcher.launch(
+            headless=browser_config.get('headless', True),
+            slow_mo=browser_config.get('slow_mo', 0),
+            args=browser_config.get('args', [])
+        )
+        
+        self._browser_launched = True
+        logger.info(f"浏览器已启动（session 级复用）")
+    
+    def new_context(self, test_name: str = "test") -> Page:
+        """为单个测试创建新的 Context 和 Page（function 级）
+        
+        每个测试调用一次，创建干净的隔离环境
+        """
+        self.test_name = test_name
+        
+        # 确保浏览器已启动
+        if not self._browser_launched:
+            self.start_browser(test_name)
+        
+        # 关闭旧的 context（如果存在）
+        self._close_current_context()
+        
+        # 准备证据收集目录
+        self.evidence_dir = Path("reports/evidence") / self.test_name
+        self.evidence_dir.mkdir(parents=True, exist_ok=True)
+        
+        evidence_config = self.settings.get('evidence', {})
+        
+        # 配置视频录制
+        video_settings = {}
+        if evidence_config.get('video', 'on_failure') != 'never':
+            video_settings = {
+                "record_video_dir": str(self.evidence_dir),
+                "record_video_size": {"width": 1920, "height": 1080}
+            }
+        
+        # 创建新上下文
+        viewport = self.settings.browser.get('viewport', {'width': 1920, 'height': 1080})
+        self.context = self.browser.new_context(
+            viewport=viewport,
+            ignore_https_errors=True,
+            **video_settings
+        )
+        
+        # 开始 Trace
+        trace_mode = evidence_config.get('trace', 'on_failure')
+        if trace_mode and trace_mode != 'never':
+            self.trace_path = str(self.evidence_dir / self.TRACE)
+            self.context.tracing.start(screenshots=True, snapshots=True, sources=True)
+            self._trace_started = True
+            logger.debug(f"Trace 录制已启用")
+        
+        # 创建页面
+        self.page = self.context.new_page()
+        timeout = self.settings.test.get('timeout', 30000)
+        self.page.set_default_timeout(timeout)
+        
+        # 监听控制台
+        if evidence_config.get('console_log', True):
+            self.page.on("console", lambda msg: logger.debug(f"浏览器控制台 [{msg.type}]: {msg.text}"))
+        self.page.on("pageerror", lambda err: logger.error(f"页面错误：{err}"))
+        
+        logger.info(f"新 Context+Page 已创建，测试：{self.test_name}")
+        return self.page
+    
+    def _close_current_context(self):
+        """关闭当前 Context（内部使用）"""
+        if self.context:
+            try:
+                if self._trace_started:
+                    try:
+                        self.context.tracing.stop()
+                    except:
+                        pass
+                self.context.close()
+            except Exception as e:
+                logger.debug(f"关闭 Context 出错（可忽略）：{e}")
+            self.context = None
+            self.page = None
+            self._trace_started = False
+    
+    def save_evidence(self, test_status: str = "failed") -> Dict[str, Optional[str]]:
+        """保存测试证据
+        
+        Args:
+            test_status: 测试状态 "passed" 或 "failed"
+            
+        Returns:
+            Dict: 证据文件路径字典
+        """
+        evidence_config = self.settings.get('evidence', {})
+        result = {
+            "screenshot": None,
+            "video": None,
+            "trace": None,
+            "page": None
+        }
+        
+        if not self.evidence_dir:
+            return result
+        
+        logger.info(f"保存测试证据，状态：{test_status}")
+        
+        is_failure = test_status == "failed"
+        should_save = lambda key: (
+            evidence_config.get(key, 'on_failure') == 'always' or
+            (is_failure and evidence_config.get(key, 'on_failure') == 'on_failure')
+        )
+        
+        if should_save('screenshot'):
+            try:
+                screenshot_path = self.evidence_dir / self.SCREENSHOT
+                self.page.screenshot(path=str(screenshot_path), full_page=True)
+                result["screenshot"] = str(screenshot_path)
+                logger.info(f"截图已保存：{screenshot_path}")
+            except Exception as e:
+                logger.error(f"保存截图失败：{e}")
+        
+        if should_save('page_html'):
+            try:
+                html_path = self.evidence_dir / self.PAGE_HTML
+                with open(html_path, 'w', encoding='utf-8') as f:
+                    f.write(self.page.content())
+                result["page"] = str(html_path)
+            except Exception as e:
+                logger.error(f"保存 HTML 失败：{e}")
+        
+        if should_save('trace') and self._trace_started and self.trace_path:
+            try:
+                self.context.tracing.stop(path=self.trace_path)
+                result["trace"] = self.trace_path
+                logger.info(f"Trace 已保存：{self.trace_path}")
+            except Exception as e:
+                logger.error(f"保存 Trace 失败：{e}")
+        
+        # 处理视频文件
+        if self.evidence_dir:
+            try:
+                video_files = list(self.evidence_dir.glob("*.webm"))
+                if video_files:
+                    latest_video = max(video_files, key=lambda p: p.stat().st_mtime)
+                    target_video = self.evidence_dir / self.VIDEO
+                    if target_video.exists():
+                        target_video.unlink()
+                    shutil.move(str(latest_video), str(target_video))
+                    result["video"] = str(target_video)
+                    logger.info(f"视频已保存：{target_video}")
+            except Exception as e:
+                logger.error(f"保存视频失败：{e}")
+        
+        return result
+    
+    def close(self):
+        """关闭浏览器（session 结束时调用）"""
+        self._close_current_context()
+        try:
+            if self.browser:
+                self.browser.close()
+            if self.playwright:
+                self.playwright.stop()
+            self._browser_launched = False
+            logger.info("浏览器已关闭")
+        except Exception as e:
+            logger.error(f"关闭浏览器时出错：{e}")
+    
+    def get_page(self) -> Optional[Page]:
+        """获取当前页面"""
+        return self.page

@@ -1,0 +1,348 @@
+"""
+Pytest 配置和 fixtures
+
+设计原则：
+1. session 级单浏览器登录，所有测试共享（节省 10+ 秒）
+2. 每个测试自主 navigate，不依赖跨测试的页面状态
+3. 支持 pytest-xdist 并行（不同 worker 各自独立登录）
+"""
+
+import pytest
+import pytest_html
+import os
+import sys
+import shutil
+from pathlib import Path
+from datetime import datetime
+
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+from config.settings import Settings
+from utils._core.browser_manager import BrowserManager
+from utils.logger import logger
+from utils._core.test_formatter import TestResult, TestResultFormatter
+
+
+# ============ Session 生命周期 ============
+
+def pytest_sessionstart(session):
+    """测试 session 开始前：备份旧证据，清理本轮证据目录"""
+    evidence_root = project_root / "reports" / "evidence"
+    
+    if not evidence_root.exists():
+        evidence_root.mkdir(parents=True, exist_ok=True)
+        return
+    
+    # 如果有旧证据，先备份到 backup 目录
+    old_items = [d for d in evidence_root.iterdir() if d.is_dir()]
+    if old_items:
+        backup_root = evidence_root / "_evidence_backup"
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_dir = backup_root / ts
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        
+        for item in old_items:
+            dest = backup_dir / item.name
+            shutil.move(str(item), str(dest))
+        
+        logger.info(f"旧证据已备份到：_evidence_backup/{ts}/ ({len(old_items)} 个目录)")
+    
+    # 清理本轮残留（pytest-xdist worker 临时目录等）
+    for item in evidence_root.iterdir():
+        if item.is_dir():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
+    
+    logger.info("证据目录已清理，本轮测试开始")
+
+
+# ============ 命令行选项 ============
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--output-format",
+        action="store",
+        default="json",
+        choices=["json", "junit", "table", "csv"],
+        help="测试结果输出格式 (默认: json)"
+    )
+    parser.addoption(
+        "--output-file",
+        action="store",
+        default=None,
+        help="测试结果输出文件路径"
+    )
+
+
+# ============ Session 级 fixtures（整个 session 只初始化一次）============
+
+@pytest.fixture(scope="session")
+def settings():
+    return Settings()
+
+
+@pytest.fixture(scope="session")
+def browser_manager(settings):
+    """单浏览器实例，整个 session 只启动一次"""
+    manager = BrowserManager(settings)
+    yield manager
+    manager.close()
+
+
+@pytest.fixture(scope="session")
+def page(browser_manager):
+    """单 Page 实例，整个 session 共享"""
+    page = browser_manager.new_page_for_session()
+    yield page
+
+
+@pytest.fixture(scope="session")
+def base_url(settings):
+    return settings.test.get('base_url', '')
+
+
+@pytest.fixture(scope="session")
+def logged_in_admin(page, base_url):
+    """信息中心管理员登录（session 级，只登录一次）
+    
+    适用于：申请、审批、查询等管理员可独立完成的场景
+    """
+    import time
+    from pages.common.login_page import LoginPage
+    
+    lp = LoginPage(page, base_url)
+    
+    logger.info("=== Session 登录（信息中心管理员）===")
+    lp.open_login()
+    lp.login(username="T100002", password="wisedu@1", verify_code="2222")
+    
+    # 身份选择
+    for i in range(5):
+        time.sleep(0.5)
+        if lp.is_identity_select_visible():
+            lp.select_identity_if_needed("信息中心管理员")
+            time.sleep(0.5)
+            break
+        if "login" not in lp.page.url:
+            break
+    
+    try:
+        lp.page.wait_for_url("**/dataapp/**", timeout=10000)
+    except:
+        pass
+    
+    logger.info("=== 登录完成 ===")
+    return lp
+
+
+@pytest.fixture(scope="session")
+def logged_in_teacher(page, base_url):
+    """教师身份登录（session 级，只登录一次）
+    
+    适用于：必须以教师身份操作的场景
+    """
+    import time
+    from pages.common.login_page import LoginPage
+    
+    lp = LoginPage(page, base_url)
+    
+    logger.info("=== Session 登录（教师）===")
+    lp.open_login()
+    lp.login(username="T100002", password="wisedu@1", verify_code="2222")
+    
+    for i in range(8):
+        time.sleep(0.5)
+        if lp.is_identity_select_visible():
+            lp.select_identity_if_needed("教师")
+            time.sleep(1)
+            break
+        if "login" not in lp.page.url and "selectIdentity" not in lp.page.url:
+            break
+    
+    try:
+        lp.page.wait_for_url("**/dataapp/index#/**", timeout=10000)
+    except:
+        pass
+    
+    logger.info("=== 教师登录完成 ===")
+    return lp
+
+
+# ============ 页面对象 fixtures（session 级）============
+
+@pytest.fixture(scope="session")
+def my_data_page(page, base_url):
+    from pages.teacher_data_center.my_data_page import MyDataPage
+    return MyDataPage(page, base_url)
+
+
+@pytest.fixture(scope="session")
+def data_query_page(page, base_url):
+    from pages.teacher_data_center.data_query_page import DataQueryPage
+    return DataQueryPage(page, base_url)
+
+
+# ============ 工厂函数（session 级）============
+
+@pytest.fixture(scope="session")
+def create_page(page, base_url):
+    """动态创建页面对象的工厂函数
+    
+    使用方式:
+        def test_something(logged_in_admin, create_page):
+            my_data = create_page("my_data")
+            my_data.navigate_to()
+    
+    每个测试自主 navigate，不依赖其他测试的页面状态
+    """
+    def _create(page_name: str):
+        from pages import get_page
+        return get_page(page_name)(page, base_url)
+    return _create
+
+
+# ============ 测试结果收集 ============
+
+_test_results = []
+
+
+def get_test_results():
+    return _test_results
+
+
+def _format_path_as_url(path: Path) -> str:
+    abs_path = path.absolute()
+    return f"file:///{str(abs_path).replace(chr(92), '/')}"
+
+
+def _get_evidence_for_test(test_name: str) -> dict:
+    evidence_dir = project_root / "reports" / "evidence" / test_name
+    if not evidence_dir.exists():
+        return {}
+    
+    evidence = {}
+    for f in evidence_dir.iterdir():
+        if "screenshot" in f.name.lower() and f.suffix == ".png":
+            evidence["screenshot"] = f
+        elif "video" in f.name.lower() and f.suffix == ".webm" and f.name == "video.webm":
+            evidence["video"] = f
+        elif "trace" in f.name.lower() and f.suffix == ".zip":
+            evidence["trace"] = f
+        elif f.name == "page.html":
+            evidence["page"] = f
+    return evidence
+
+
+def _create_evidence_html(test_name: str, is_failed: bool = False) -> str:
+    evidence = _get_evidence_for_test(test_name)
+    if not evidence:
+        return ""
+    
+    icons = {"screenshot": "📷", "video": "🎬", "trace": "🔍", "page": "📄"}
+    evidence_order = ["video"] if not is_failed else ["screenshot", "video", "trace", "page"]
+    
+    links = []
+    for et in evidence_order:
+        if et not in evidence:
+            continue
+        fp = evidence[et]
+        url = _format_path_as_url(fp)
+        icon = icons.get(et, "📎")
+        links.append(f'<a href="{url}" target="_blank">{icon} {et.upper()}</a>')
+    
+    return '<div class="evidence-links">' + ''.join(links) + '</div>'
+
+
+def _log_evidence_links(test_name: str, evidence_paths: dict):
+    ed = _format_path_as_url((project_root / "reports" / "evidence" / test_name).absolute())
+    logger.error(f"📁 证据目录：{ed}")
+    icons = {"screenshot": "📷", "video": "🎬", "trace": "🔍", "page": "📄"}
+    for key, path in evidence_paths.items():
+        if path and Path(path).exists():
+            logger.error(f"  {icons.get(key,'📎')} {key.upper()}: {_format_path_as_url(Path(path))}")
+
+
+_test_evidence = {}
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+    
+    if report.when == 'call':
+        result = TestResult(
+            name=item.name,
+            status="passed" if report.passed else "failed",
+            duration=call.stop - call.start if hasattr(call, 'stop') and call.stop else 0.0,
+            message=str(call.excinfo) if call.excinfo else None,
+            test_class=item.nodeid.split("::")[1] if "::" in item.nodeid else None,
+        )
+        _test_results.append(result)
+        
+        evidence_paths = {}
+        try:
+            if 'browser_manager' in item.funcargs:
+                bm = item.funcargs['browser_manager']
+                status = "passed" if report.passed else "failed"
+                evidence_paths = bm.save_evidence(status)
+            
+            if report.passed:
+                logger.info(f"✅ {item.name}")
+            elif report.failed:
+                logger.error(f"❌ {item.name}: {report.longreprtext}")
+                _log_evidence_links(item.name, evidence_paths)
+        except Exception as e:
+            logger.error(f"处理测试结果时出错：{e}")
+        
+        test_name = item.name
+        evidence_html = _create_evidence_html(test_name, report.passed is False)
+        _test_evidence[test_name] = evidence_html
+        
+        if evidence_html:
+            report.extra = getattr(report, 'extra', [])
+            report.extra.append(pytest_html.extras.html(evidence_html))
+
+
+def pytest_html_results_table_header(cells):
+    cells.insert(2, '<th class="col-evidence">证据</th>')
+
+
+def pytest_html_results_table_row(report, cells):
+    test_name = report.nodeid.split("::")[-1].split("[")[0]
+    html = _test_evidence.get(test_name, '<span style="color:#999;">-</span>')
+    cells.insert(2, f'<td class="col-evidence">{html}</td>')
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    results = get_test_results()
+    if not results:
+        return
+    
+    output_format = config.getoption("--output-format", "json")
+    output_file = config.getoption("--output-file", None)
+    
+    if output_format == "json":
+        output = TestResultFormatter.to_json(results, pretty=True)
+    elif output_format == "junit":
+        output = TestResultFormatter.to_junit_xml(results)
+    elif output_format == "table":
+        output = TestResultFormatter.to_table(results)
+    elif output_format == "csv":
+        output = TestResultFormatter.to_csv(results)
+    else:
+        output = TestResultFormatter.to_json(results)
+    
+    if output_file:
+        p = Path(output_file)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(output, encoding='utf-8')
+        terminalreporter.write_line(f"\n结果已保存: {p.absolute()}")
+    
+    if output_format == "table" or os.environ.get("CI") is None:
+        terminalreporter.write_line("\n" + "=" * 70)
+        terminalreporter.write_line(TestResultFormatter.to_table(results))
+        terminalreporter.write_line("=" * 70)

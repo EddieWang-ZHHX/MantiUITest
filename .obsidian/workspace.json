@@ -1,0 +1,214 @@
+{
+  "main": {
+    "id": "aa77b4284403fd6c",
+    "type": "split",
+    "children": [
+      {
+        "id": "b94e6462b0843560",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8fc52cbd022b49c1",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "docs/research/opencli-research-20260324.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "opencli-research-20260324"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "ea6b1e36e4a3ff02",
+    "type": "split",
+    "children": [
+      {
+        "id": "5b9e119509630430",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e55a8b093c1f4287",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "60fcb207d7697089",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "5bf6419a5fe37405",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "6cb52704d4bb2d5e",
+    "type": "split",
+    "children": [
+      {
+        "id": "157b745c69ef715c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "3adf23e4537467d5",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "docs/research/opencli-research-20260324.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "opencli-research-20260324 的反向链接列表"
+            }
+          },
+          {
+            "id": "bc2fce23a339dec8",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "docs/research/opencli-research-20260324.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "opencli-research-20260324 的出链列表"
+            }
+          },
+          {
+            "id": "e36bbaaf21a23094",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "3b17a3a03787a6ab",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "0c6d659d668c9ca0",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "docs/research/opencli-research-20260324.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "opencli-research-20260324 的大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "8fc52cbd022b49c1",
+  "lastOpenFiles": [
+    "reports/evidence/test_postdoc_delete/video.webm",
+    "reports/evidence/test_postdoc_delete/trace.zip",
+    "reports/evidence/test_postdoc_delete/page.html",
+    "reports/evidence/test_postdoc_delete/screenshot.png",
+    "reports/evidence/test_postdoc_delete/1af63dd046ff1964527d66999ef40e77.webm",
+    "reports/evidence/test_postdoc_delete",
+    "reports/evidence/test_postdoc_edit/video.webm",
+    "reports/evidence/test_postdoc_edit/trace.zip",
+    "reports/evidence/test_postdoc_edit/page.html",
+    "reports/evidence/test_postdoc_edit/screenshot.png",
+    "reports/evidence/test_postdoc_edit/01f49d3a02ef953fd6a935275b03f1b0.webm",
+    "reports/evidence/test_postdoc_edit",
+    "reports/evidence/test_postdoc_add/video.webm",
+    "reports/evidence/test_postdoc_add/screenshot.png",
+    "docs/analysis_test_cases_md/teacher_data_center/02_我的数据测试场景.md",
+    "docs/analysis_test_cases_md/teacher_data_center/my_data_test_case.md",
+    "docs/页面分析/登录页面分析.md",
+    "docs/身份选择设计说明.md",
+    "TEST_NAMING_RULES.md",
+    "TEST_TRACKER.md",
+    "output/teacher_data_center/docs/02_我的数据测试场景.md",
+    "input/teacher_data_center/教师数据中心测试用例整理.md",
+    "output/02teapub/docs/02_我的数据测试场景.md",
+    "02teapub/教师数据中心测试用例整理.md",
+    "input/02teapub/教师数据中心测试用例整理.md"
+  ]
+}
