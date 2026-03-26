@@ -55,7 +55,7 @@ conda activate manti
 cd C:\11_UITest
 
 # 运行所有登录测试
-C:\Users\Eddie\miniconda3\envs\manti\python.exe -m pytest tests/test_00_login.py -v
+C:\Users\Eddie\miniconda3\envs\manti\python.exe -m pytest tests/common/ -v
 
 # 运行所有测试
 C:\Users\Eddie\miniconda3\envs\manti\python.exe -m pytest -v
@@ -96,13 +96,22 @@ C:\11_UITest/
 │   ├── QUICKSTART.md             # 快速开始指南
 │   └── docs/                     # 详细文档
 │       ├── 页面分析规范.md        # 📋 页面分析 SOP（重要！）
-│       └── 页面分析/             # 每个页面的详细分析
-│           └── 登录页面分析.md
+│       ├── 页面分析/             # 每个页面的详细分析
+│       │   └── 登录页面分析.md
+│       ├── analysis_test_cases_md/  # 测试用例分析（XMind 导出）
+│       ├── org_test_cases/          # 原始测试用例
+│       ├── research/               # 研究资料
+│       ├── ci-cd-guide.md         # CI/CD 指南
+│       ├── 身份选择使用指南.md
+│       ├── 身份选择设计说明.md
+│       ├── 页面拆分标准.md
+│       └── 页面拆分量化标准.md
 │
 ├── ⚙️ 配置
 │   ├── config/
 │   │   ├── config.yaml           # 主配置（URL、证据收集等）
-│   │   └── settings.py           # 配置加载逻辑
+│   │   ├── config.yml.demo     # 配置示例
+│   │   └── settings.py         # 配置加载逻辑
 │   ├── pytest.ini                # Pytest 配置
 │   └── requirements.txt          # Python 依赖
 │
@@ -110,46 +119,55 @@ C:\11_UITest/
 │   ├── pages/
 │   │   ├── base_page.py          # 页面基类（通用方法）
 │   │   ├── common/               # 通用页面
-│   │   │   └── login_page.py     # 登录页面
-│   │   └── teacher_data_center/  # 教师数据中心页面
-│   │       └── my_data_page.py   # 我的数据页面
+│   │   │   └── login_page.py   # 登录页面
+│   │   └── teacher_data_center/ # 教师数据中心页面
+│   │       └── my_data_page.py  # 我的数据页面
 │   └── test_data/                # 测试数据
 │       └── accounts.yaml         # 测试账号配置
 │
 ├── 🧪 测试用例
 │   ├── tests/
-│   │   ├── conftest.py           # Pytest fixtures + 证据收集
-│   │   ├── test_00_login.py      # 登录测试（2 个用例）
-│   │   ├── test_01_my_data.py    # 我的数据测试（2 个用例）
-│   │   └── README.md             # 测试编写指南
-│   └── pytest.ini                # Pytest 配置
+│   │   ├── conftest.py          # Pytest fixtures + 证据收集
+│   │   ├── common/              # common 模块
+│   │   │   ├── __init__.py
+│   │   │   ├── test_00_login.py              # 登录测试
+│   │   │   └── test_00_login_with_identity.py  # 身份选择登录测试
+│   │   └── teacher_data_center/  # teacher_data_center 模块
+│   │       ├── __init__.py
+│   │       └── test_01_my_data.py  # 我的数据测试
+│   └── pytest.ini               # Pytest 配置
 │
 ├── 🔧 工具类
 │   ├── utils/
-│   │   ├── browser_manager.py    # 🎥 浏览器管理（支持视频/Trace 录制）
-│   │   └── logger.py             # 日志系统
-│   └── setup.bat                 # 一键安装脚本
+│   │   ├── _core/               # 核心工具（内部）
+│   │   │   └── browser_manager.py  # 🎥 浏览器管理
+│   │   ├── browser_manager.py  # 浏览器管理（外部接口）
+│   │   ├── logger.py          # 日志系统
+│   │   └── test_formatter.py # 测试结果格式化
+│   └── setup.bat               # 一键安装脚本
 │
 ├── 📊 测试报告与证据
 │   ├── reports/
-│   │   ├── report.html           # HTML 测试报告
-│   │   ├── README.md             # 证据查看指南
-│   │   └── evidence/             # 📸 测试证据（每个测试的证据包）
-│   │       ├── test_login_success/
-│   │       │   ├── video.webm    # 测试视频
-│   │       │   ├── trace.zip     # Playwright Trace（最详细证据）
-│   │       │   ├── screenshot_failed.png  # 失败截图
-│   │       │   └── page_failed.html       # 失败页面 HTML
-│   │       └── ...
+│   │   ├── report.html         # HTML 测试报告
+│   │   ├── test-results.xml   # JUnit XML 报告
+│   │   ├── README.md          # 证据查看指南
+│   │   └── evidence/          # 📸 测试证据（按模块分组）
+│   │       ├── common/        # common 模块
+│   │       │   ├── test_login_success/
+│   │       │   │   ├── video.webm
+│   │       │   │   ├── screenshot.png
+│   │       │   │   ├── page.html
+│   │       │   │   └── trace.zip
+│   │       │   └── test_login_wrong_password/
+│   │       └── teacher_data_center/   # teacher_data_center 模块
+│   │           └── test_my_data_add/
 │   └── logs/
-│       └── test.log              # 测试执行日志
+│       └── test.log           # 测试执行日志
 │
 └── 🧹 其他
-    ├── .gitignore                # Git 忽略配置
-    └── .pytest_cache/            # Pytest 缓存（自动生成）
+    ├── .gitignore              # Git 忽略配置
+    └── .pytest_cache/         # Pytest 缓存（自动生成）
 ```
-
----
 
 ## 🎯 核心特性
 
@@ -160,10 +178,27 @@ C:\11_UITest/
 | 证据类型 | 说明 | 查看方式 |
 |---------|------|---------|
 | 🎥 **视频录制** | 完整测试执行过程 | 直接用播放器打开 `video.webm` |
-| 📸 **失败截图** | 测试失败时的全页面截图 | 打开 `screenshot_failed.png` |
-| 📄 **页面 HTML** | 失败时的完整 DOM | 浏览器打开 `page_failed.html` |
+| 📸 **截图** | 测试时的全页面截图 | 打开 `screenshot.png` |
+| 📄 **页面 HTML** | 测试时的完整 DOM | 浏览器打开 `page.html` |
 | 🔍 **Playwright Trace** | ⭐ 最详细证据，包含每个操作的快照、网络请求、控制台日志 | `playwright show-trace trace.zip` |
 | 📝 **详细日志** | 每个测试步骤、浏览器控制台、错误信息 | 查看 `logs/test.log` |
+
+**证据显示规则**：
+
+| 测试状态 | 显示的证据 |
+|----------|------------|
+| PASS | 🎬 VIDEO |
+| FAIL | 📷 SCREENSHOT + 🎬 VIDEO + 🔍 TRACE + 📄 PAGE |
+
+**HTML 报告特性**：
+
+| 特性 | 说明 |
+|------|------|
+| 📦 顶部分组摘要 | 按模块显示通过/失败统计 |
+| 🏷️ 模块前缀 | 测试名称显示为 `模块 / 测试名` |
+| 🔗 证据列 | 直接链接到视频/截图/Trace/页面 |
+| 📄 源码列 | 直接链接到测试用例源码 |
+| 📁 相对路径 | 证据链接可直接点击 |
 
 **配置证据收集**（`config/config.yaml`）：
 ```yaml
@@ -220,8 +255,15 @@ evidence:
 ### 已完成
 | 测试文件 | 用例数 | 状态 | 说明 |
 |---------|-------|------|------|
-| `test_00_login.py` | 2 | ✅ 通过 1 个，⏳ 待修复 1 个 | 登录成功测试通过，错误密码测试待修复 |
-| `test_01_my_data.py` | 2 | ⏳ 待运行 | 已编写，待网络恢复后运行 |
+| `test_00_login.py` | 2 | ✅ 全部通过 | 登录成功 + 错误密码验证 |
+| `test_01_my_data.py` | 2 | ⏳ 待修复 | 页面结构变化，需更新定位器 |
+
+### 已支持的优先级标记
+```python
+@pytest.mark.p1  # 核心功能
+@pytest.mark.p2  # 重要功能
+@pytest.mark.p3  # 一般功能
+```
 
 ### 待开发（来自 XMind）
 | 模块 | P1 用例数 | P2 用例数 | 优先级 |
@@ -242,16 +284,23 @@ evidence:
 ### 运行测试
 ```bash
 # 运行所有测试
-pytest -v
+pytest tests/ -v
+
+# 按模块运行
+pytest tests/common/ -v
+pytest tests/teacher_data_center/ -v
+
+# 按优先级运行
+pytest -m p1           # 只跑 P1 测试（冒烟）
+pytest -m p2           # 只跑 P2 测试
+pytest -m "p1 or p2"  # 跑 P1 + P2
+pytest -m "not p3"     # 排除 P3
 
 # 运行特定测试文件
-pytest tests/test_00_login.py -v
-
-# 运行特定测试类
-pytest tests/test_00_login.py::TestLogin -v
+pytest tests/common/test_00_login.py -v
 
 # 运行特定测试方法
-pytest tests/test_00_login.py::TestLogin::test_login_success -v
+pytest tests/common/test_00_login.py::TestLogin::test_login_success -v
 
 # 失败后重试
 pytest --lf
@@ -266,10 +315,10 @@ pytest -n 4
 start reports\report.html
 
 # 查看 Trace
-C:\Users\Eddie\miniconda3\envs\manti\python.exe -m playwright show-trace reports/evidence/<测试名称>/trace.zip
+C:\Users\Eddie\miniconda3\envs\manti\python.exe -m playwright show-trace evidence/<模块>/<测试名>/trace.zip
 
 # 查看视频
-start reports\evidence\<测试名称>\video.webm
+start evidence\<模块>\<测试名>\video.webm
 
 # 查看日志
 Get-Content logs\test.log -Tail 50
@@ -282,7 +331,7 @@ pytest --headed --slowmo=1000
 
 # 打开 Playwright Inspector
 set DEBUG=pw:api
-pytest tests/test_00_login.py
+pytest tests/common/test_00_login.py
 
 # 只运行失败的测试
 pytest --lf
@@ -446,6 +495,15 @@ pytest --lf
 | 2026-03-24 | 制定页面分析规范（SOP） | Manti |
 | 2026-03-24 | 完成登录页面测试（1 通过 1 待修复） | Manti |
 | 2026-03-24 | 重写 README，增加项目总览和文档导航 | Manti |
+| 2026-03-25~26 | 报告系统重构（pytest-html + evidence 列） | Manti |
+| 2026-03-26 | 报告分组摘要（模块 + 整体统计） | Manti |
+| 2026-03-26 | 证据目录结构 `evidence/{模块}/{测试名}/` | Manti |
+| 2026-03-26 | 测试标记 P1/P2/P3 支持 | Manti |
+| 2026-03-26 | FAIL 测试显示全部证据（VIDEO + SCREENSHOT + TRACE + PAGE） | Manti |
+| 2026-03-26 | 报告增加源码链接列 | Manti |
+| 2026-03-26 | 错误密码登录改为检查 toast 提示 | Manti |
+| 2026-03-26 | 测试文件按模块分组（tests/common/, tests/teacher_data_center/） | Manti |
+| 2026-03-26 | 合并 reports/README 到项目 README | Manti |
 
 ---
 
@@ -455,8 +513,8 @@ pytest --lf
 
 ## 🎯 下一步
 
-1. ✅ **登录测试** - 修复错误密码测试
-2. ⏳ **我的数据测试** - 运行并验证
+1. ✅ **登录测试** - 全部通过
+2. ⏳ **我的数据测试** - 修复页面定位器
 3. ⏳ **教师数据查询测试** - 开发新页面测试
 4. ⏳ **完善证据系统** - 优化 Trace 和日志
 5. ⏳ **持续集成** - 配置 CI/CD 自动执行

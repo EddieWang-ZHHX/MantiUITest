@@ -79,7 +79,16 @@ def page(browser_manager, request):
     每个测试使用独立的浏览器页面
     """
     test_name = request.node.name
-    browser_manager.start_browser(test_name=test_name)
+    # 从测试文件路径提取模块名：如 tests/teacher_data_center/test_my_data.py → teacher_data_center
+    test_file = str(request.node.fspath)
+    parts = Path(test_file).parts
+    if "teacher_data_center" in parts:
+        module = "teacher_data_center"
+    elif "common" in parts:
+        module = "common"
+    else:
+        module = "common"
+    browser_manager.start_browser(test_name=test_name, module=module)
     page = browser_manager.get_page()
     yield page
 
@@ -180,17 +189,65 @@ def get_test_results():
 
 
 def _format_path_as_url(path: Path) -> str:
-    """将路径转换为 file:// URL 格式"""
-    abs_path = path.absolute()
-    return f"file:///{str(abs_path).replace(chr(92), '/')}"
+    """将路径转换为相对路径（相对于 reports/ 目录）
+    
+    报告在 reports/report.html，证据在 reports/evidence/{test}/，相对路径如 evidence/{test}/video.webm
+    """
+    try:
+        rel_path = path.relative_to(project_root / "reports")
+        return str(rel_path).replace(chr(92), '/')
+    except ValueError:
+        # fallback 到绝对路径
+        abs_path = path.absolute()
+        return f"file:///{str(abs_path).replace(chr(92), '/')}"
 
 
 def _get_evidence_for_test(test_name: str) -> dict:
-    """获取测试的证据文件信息"""
-    evidence_dir = project_root / "reports" / "evidence" / test_name
+    """获取测试的证据文件信息
     
-    if not evidence_dir.exists():
-        return {}
+    支持两种目录结构：
+    1. 新结构: reports/evidence/{module}/{test_name}/
+    2. 旧结构: reports/evidence/{test_name}/
+    """
+    # 新结构（带模块层级）
+    evidence_dir_new = project_root / "reports" / "evidence"
+    if evidence_dir_new.exists():
+        for module_dir in evidence_dir_new.iterdir():
+            if module_dir.is_dir():
+                evidence_dir = module_dir / test_name
+                if evidence_dir.exists():
+                    return _scan_evidence_dir(evidence_dir)
+    
+    # 旧结构（扁平）
+    evidence_dir = project_root / "reports" / "evidence" / test_name
+    if evidence_dir.exists():
+        return _scan_evidence_dir(evidence_dir)
+    
+    return {}
+
+
+def _scan_evidence_dir(evidence_dir: Path) -> dict:
+    """扫描证据目录，返回文件字典"""
+    evidence = {}
+    for f in evidence_dir.iterdir():
+        if f.is_file():
+            if "screenshot" in f.name.lower() and f.suffix == ".png":
+                if "screenshot.png" == f.name:
+                    evidence["screenshot"] = f
+                elif "screenshot" not in evidence:
+                    evidence["screenshot"] = f
+            elif "video" in f.name.lower() and f.suffix == ".webm":
+                if f.name == "video.webm":
+                    evidence["video"] = f
+                elif "video" not in evidence:
+                    evidence["video"] = f
+            elif "trace" in f.name.lower() and f.suffix == ".zip":
+                evidence["trace"] = f
+            elif f.name == "page.html":
+                evidence["page"] = f
+            elif "console" in f.name.lower() and f.suffix == ".log":
+                evidence["console"] = f
+    return evidence
     
     evidence = {}
     for f in evidence_dir.iterdir():
@@ -257,6 +314,52 @@ def _create_evidence_html(test_name: str, is_failed: bool = False) -> str:
     return '<div class="evidence-links">' + ''.join(links) + '</div>'
 
 
+def _create_evidence_html_direct(test_name: str, module: str, is_failed: bool) -> str:
+    """直接从证据目录扫描文件生成 HTML
+    
+    Args:
+        test_name: 测试名称
+        module: 模块名
+        is_failed: 是否失败测试
+    """
+    # 优先在新结构查找：reports/evidence/{module}/{test_name}/
+    evidence_dir = project_root / "reports" / "evidence" / module / test_name
+    
+    # 回退旧结构：reports/evidence/{test_name}/
+    if not evidence_dir.exists():
+        evidence_dir = project_root / "reports" / "evidence" / test_name
+    
+    if not evidence_dir.exists():
+        return '<span style="color: #999;">-</span>'
+    
+    evidence = _scan_evidence_dir(evidence_dir)
+    if not evidence:
+        return '<span style="color: #999;">-</span>'
+    
+    icons = {
+        "screenshot": "📷",
+        "video": "🎬",
+        "trace": "🔍",
+        "page": "📄",
+        "console": "📝"
+    }
+    
+    # 失败测试显示所有证据，通过测试只显示视频
+    evidence_order = ["video"] if not is_failed else ["screenshot", "video", "trace", "page"]
+    
+    links = []
+    for evidence_type in evidence_order:
+        if evidence_type not in evidence:
+            continue
+        file_path = evidence[evidence_type]
+        url = _format_path_as_url(file_path)
+        icon = icons.get(evidence_type, "📎")
+        label = evidence_type.upper()
+        links.append(f'<a href="{url}" target="_blank">{icon} {label}</a>')
+    
+    return '<div class="evidence-links">' + ''.join(links) + '</div>'
+
+
 def _log_evidence_links(test_name: str, evidence_paths: dict):
     """输出证据链接到日志"""
     evidence_dir = Path("reports/evidence") / test_name
@@ -293,12 +396,23 @@ def pytest_runtest_makereport(item, call):
     
     # 收集测试结果
     if report.when == 'call':
+        # 从测试文件路径提取模块名
+        test_file = str(item.fspath)
+        parts = Path(test_file).parts
+        if "teacher_data_center" in parts:
+            module = "teacher_data_center"
+        elif "common" in parts:
+            module = "common"
+        else:
+            module = "common"
+        
         result = TestResult(
             name=item.name,
             status="passed" if report.passed else "failed",
             duration=call.stop - call.start if hasattr(call, 'stop') and call.stop else 0.0,
             message=str(call.excinfo) if call.excinfo else None,
-            test_class=item.nodeid.split("::")[1] if "::" in item.nodeid else None,
+            test_class=module,
+            nodeid=item.nodeid,
         )
         _test_results.append(result)
         
@@ -321,9 +435,11 @@ def pytest_runtest_makereport(item, call):
         
         # 为 pytest-html 存储证据信息
         test_name = item.name
+        module = _get_module_from_nodeid(item.nodeid)
         is_failed = report.passed is False
         evidence_html = _create_evidence_html(test_name, is_failed)
-        _test_evidence[test_name] = evidence_html
+        # 用模块前缀的 key 存储，这样查找时能匹配上
+        _test_evidence[f"{module}::{test_name}"] = evidence_html
         
         # 添加到报告的 extra 列表（这是正确的方式）
         if evidence_html:
@@ -332,31 +448,177 @@ def pytest_runtest_makereport(item, call):
 
 
 def pytest_html_results_table_header(cells):
-    """添加"证据"列到报告表头"""
+    """添加"证据"列和"源码"列到报告表头"""
     cells.insert(2, '<th class="col-evidence">证据</th>')
+    cells.insert(3, '<th class="col-source">源码</th>')
+
+
+def pytest_html_results_summary(prefix, summary, postfix, session):
+    """在 HTML 报告顶部添加分组摘要"""
+    results = get_test_results()
+    if not results:
+        return
+    
+    # 构建模块分组
+    modules = {}
+    for r in results:
+        m = r.test_class or "common"
+        if m not in modules:
+            modules[m] = {"passed": 0, "failed": 0, "tests": []}
+        if r.status == "passed":
+            modules[m]["passed"] += 1
+        else:
+            modules[m]["failed"] += 1
+        modules[m]["tests"].append(r)
+    
+    # 整体统计
+    total_passed = sum(1 for r in results if r.status == "passed")
+    total_failed = sum(1 for r in results if r.status == "failed")
+    total_dur = sum(r.duration for r in results)
+    
+    # 生成 HTML
+    module_rows = []
+    for module, data in sorted(modules.items()):
+        icon = "✅" if data["failed"] == 0 else "❌"
+        status_cls = "module-ok" if data["failed"] == 0 else "module-fail"
+        test_details = " | ".join(
+            f"{'✅' if t.status == 'passed' else '❌'} {t.name} ({t.duration:.1f}s)"
+            for t in data["tests"]
+        )
+        module_rows.append(
+            f'<tr class="{status_cls}">'
+            f'<td>{icon} {module}</td>'
+            f'<td>{data["passed"]} passed, {data["failed"]} failed</td>'
+            f'<td>{test_details}</td>'
+            f'</tr>'
+        )
+    
+    html = f"""
+    <style>
+        .report-summary {{ margin: 15px 0; }}
+        .report-summary h2 {{ margin: 0 0 10px 0; font-size: 15px; }}
+        .report-summary table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+        .report-summary th {{ text-align: left; padding: 6px 10px; background: #f0f0f0; }}
+        .report-summary td {{ padding: 6px 10px; border-bottom: 1px solid #eee; }}
+        .module-ok td:first-child {{ color: #2e7d32; }}
+        .module-fail td:first-child {{ color: #c62828; }}
+    </style>
+    <div class="report-summary">
+        <h2>📊 测试结果摘要</h2>
+        <table>
+            <thead>
+                <tr><th>模块</th><th>统计</th><th>测试详情</th></tr>
+            </thead>
+            <tbody>
+                {"".join(module_rows)}
+            </tbody>
+        </table>
+        <p style="margin:10px 0 0 0;font-weight:bold;">📊 合计: {total_passed} passed, {total_failed} failed | 总耗时: {total_dur:.1f}s</p>
+    </div>
+    """
+    summary.append(html)
+
+
+def _get_module_from_nodeid(nodeid: str) -> str:
+    """从 nodeid 提取模块名
+    
+    基于目录结构判断：tests/{模块}/test_xxx.py
+    """
+    # 从文件路径提取模块目录
+    # nodeid: tests/common/test_00_login.py::TestLogin::test_login_success
+    test_file = nodeid.split("::")[0]  # tests/common/test_00_login.py
+    parts = Path(test_file).parts
+    if "teacher_data_center" in parts:
+        return "teacher_data_center"
+    elif "common" in parts:
+        return "common"
+    else:
+        return "common"
 
 
 def pytest_html_results_table_row(report, cells):
-    """在每行添加证据链接"""
-    # 从 nodeid 提取测试名称
-    test_name = report.nodeid.split("::")[-1].split("[")[0]
-    evidence_html = _test_evidence.get(test_name, '<span style="color: #999;">-</span>')
+    """在每行添加证据链接，测试名称加模块前缀
+    
+    直接从证据目录扫描文件生成 HTML，不依赖缓存
+    """
+    nodeid = report.nodeid
+    test_name = nodeid.split("::")[-1].split("[")[0]
+    module = _get_module_from_nodeid(nodeid)
+    is_failed = report.passed is False
+    
+    # 修改测试ID列，加上模块前缀
+    for i, cell in enumerate(cells):
+        if 'col-testId' in cell and nodeid in cell:
+            new_cell = cell.replace(
+                nodeid,
+                f'<span class="module-tag">{module}</span> / {nodeid}'
+            )
+            cells[i] = new_cell
+            break
+    
+    # 直接从证据目录扫描，生成 HTML
+    evidence_html = _create_evidence_html_direct(test_name, module, is_failed)
     cells.insert(2, f'<td class="col-evidence">{evidence_html}</td>')
+    
+    # 添加源码列（链接到测试文件）
+    # 报告在 reports/report.html，测试文件在 tests/{模块}/ 下
+    # nodeid 如：tests/common/test_00_login.py::TestLogin::test_login_success
+    # 相对路径：../../tests/common/test_00_login.py
+    test_file = nodeid.split("::")[0]  # tests/common/test_00_login.py
+    source_link = f'<a href="../../{test_file}" target="_blank">📄 源码</a>'
+    cells.insert(3, f'<td class="col-source">{source_link}</td>')
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     """测试结束后的摘要报告
     
-    支持多种输出格式
+    支持多种输出格式，包含整体 + 分组统计
     """
     results = get_test_results()
     if not results:
         return
     
+    # 构建模块分组
+    modules = {}
+    for r in results:
+        m = r.test_class or "common"
+        if m not in modules:
+            modules[m] = []
+        modules[m].append(r)
+    
+    # 按模块分组输出
+    terminalreporter.write_line("")
+    terminalreporter.write_line("=" * 70)
+    terminalreporter.write_line("📦 分模块测试结果:")
+    terminalreporter.write_line("-" * 70)
+    
+    for module, mod_results in sorted(modules.items()):
+        passed = sum(1 for r in mod_results if r.status == "passed")
+        failed = sum(1 for r in mod_results if r.status == "failed")
+        total = len(mod_results)
+        total_dur = sum(r.duration for r in mod_results)
+        status_icon = "✅" if failed == 0 else "❌"
+        terminalreporter.write_line(
+            f"  {status_icon} [{module}] {passed} passed, {failed} failed ({total_dur:.1f}s)"
+        )
+        for r in mod_results:
+            icon = "✅" if r.status == "passed" else "❌"
+            terminalreporter.write_line(f"      {icon} {r.name} ({r.duration:.1f}s)")
+    
+    # 整体统计
+    total_passed = sum(1 for r in results if r.status == "passed")
+    total_failed = sum(1 for r in results if r.status == "failed")
+    total_dur = sum(r.duration for r in results)
+    terminalreporter.write_line("-" * 70)
+    terminalreporter.write_line(
+        f"📊 合计: {total_passed} passed, {total_failed} failed | 总耗时: {total_dur:.1f}s"
+    )
+    terminalreporter.write_line("=" * 70)
+    
+    # 输出到文件
     output_format = config.getoption("--output-format", "json")
     output_file = config.getoption("--output-file", None)
     
-    # 生成报告
     if output_format == "json":
         output = TestResultFormatter.to_json(results, pretty=True)
     elif output_format == "junit":
@@ -368,19 +630,11 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     else:
         output = TestResultFormatter.to_json(results)
     
-    # 输出到文件
     if output_file:
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(output, encoding='utf-8')
         terminalreporter.write_line(f"\n测试结果已保存: {output_path.absolute()}")
-    
-    # 输出到控制台 (非 CI 环境)
-    if output_format == "table" or os.environ.get("CI") is None:
-        terminalreporter.write_line("\n" + "=" * 70)
-        terminalreporter.write_line("测试摘要:")
-        terminalreporter.write_line(TestResultFormatter.to_table(results))
-        terminalreporter.write_line("=" * 70)
     
     # 在 CI 环境中额外输出 JUnit XML 到默认位置
     if os.environ.get("CI") == "true" and output_format != "junit":

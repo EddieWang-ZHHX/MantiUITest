@@ -30,6 +30,7 @@ class TestResult:
     traceback: Optional[str] = None
     test_class: Optional[str] = None
     timestamp: Optional[str] = None
+    nodeid: Optional[str] = None  # 完整的测试 nodeid
     
     def __post_init__(self):
         if self.timestamp is None:

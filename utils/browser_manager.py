@@ -35,8 +35,13 @@ class BrowserManager:
         self.evidence_dir: Optional[Path] = None
         self._trace_started = False
     
-    def start_browser(self, test_name: str = "test"):
-        """启动浏览器"""
+    def start_browser(self, test_name: str = "test", module: str = ""):
+        """启动浏览器
+        
+        Args:
+            test_name: 测试名称（用于证据目录）
+            module: 模块名称（可选，用于 reports/evidence/{module}/{test_name}/ 结构）
+        """
         self.test_name = test_name
         self.playwright = sync_playwright().start()
         
@@ -47,8 +52,11 @@ class BrowserManager:
         browser_name = browser_config.get('name', 'chromium')
         launcher = getattr(self.playwright, browser_name)
         
-        # 准备证据收集目录
-        self.evidence_dir = Path("reports/evidence") / self.test_name
+        # 准备证据收集目录：reports/evidence/{module}/{test_name}/
+        if module:
+            self.evidence_dir = Path("reports/evidence") / module / self.test_name
+        else:
+            self.evidence_dir = Path("reports/evidence") / self.test_name
         self.evidence_dir.mkdir(parents=True, exist_ok=True)
         
         # 配置视频录制

@@ -50,7 +50,7 @@ auth:
 
 # 页面路径
 pages:
-  my_data: /index#/jssjzx/grsjzx/myarchive/myarchive
+  my_data: /index#/jssjzx/grsjzx/myarchive
   data_query: /index#/jssjzx/grsjzx/jssjcx
   teacher_manage: /index#/jssjzx/grsjzx/jslbgl
   data_compare: /index#/jssjzx/grsjzx/sjbd

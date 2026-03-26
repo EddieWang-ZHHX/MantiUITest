@@ -42,10 +42,15 @@ logs/
 # IDE
 .vscode/
 .idea/
+.obsidian/
 *.swp
 *.swo
 *~
+# Local secrets (do not commit)
+config/config.yml
+config/accounts.yaml
 
+# OS
 # 操作系统
 .DS_Store
 Thumbs.db
@@ -53,3 +58,8 @@ Thumbs.db
 # 环境配置
 .env
 *.local
+
+# 文件
+docs
+*.md
+02teapub

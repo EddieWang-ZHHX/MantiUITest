@@ -9,9 +9,12 @@ from utils.logger import logger
 class TestMyData:
     """我的数据页面测试类"""
     
+    @pytest.mark.p1
     def test_teacher_identity_my_data(self, login_page):
         """
         验证使用"教师"身份登录后能访问"我的数据"
+        
+        优先级: P1
         
         说明：
         - T100002 + "教师"身份 = 登录后直接显示"我的数据"内容
@@ -63,11 +66,14 @@ class TestMyData:
         
         logger.info("========== 测试通过：教师身份访问我的数据 ==========")
     
+    @pytest.mark.p2
     def test_my_data_modules(self, login_page):
         """
         验证"我的数据"页面的四大模块
         
-        说明：页面应显示基本信息、人事信息、教育教学、科研信息四大模块
+        优先级: P2
+        
+        说明：页面应显示个人信息、教学育人、科学研究模块
         """
         logger.info("========== 开始测试：我的数据四大模块 ==========")
         

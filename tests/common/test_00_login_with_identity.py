@@ -11,9 +11,12 @@ class TestLoginWithIdentity:
         # "教师",  # 如果有教师账号可以添加
         # "人事处管理员",
     ])
+    @pytest.mark.p1
     def test_login_with_identity(self, login_page, identity):
         """
         TC-LOGIN-003: 验证不同身份登录
+        
+        优先级: P1
         
         测试步骤:
         1. 打开登录页面
@@ -45,9 +48,12 @@ class TestLoginWithIdentity:
         
         logger.info(f"========== 测试通过：登录并选择身份 [{identity}] ==========")
     
+    @pytest.mark.p3
     def test_login_select_first_identity(self, login_page):
         """
         TC-LOGIN-004: 验证登录并选择第一个可用身份
+        
+        优先级: P3
         
         测试步骤:
         1. 打开登录页面
