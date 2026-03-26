@@ -1,32 +1,55 @@
-# Evidence & Reports
-reports/
-evidence/
-*.html
-*.png
-*.webm
-*.zip
-*.log
-
 # Python
 __pycache__/
 *.py[cod]
-*.egg-info/
-.venv/
+*$py.class
+*.so
+.Python
+env/
 venv/
-.mypy_cache/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Pytest
 .pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# 测试报告
+reports/
+allure-results/
+*.html
+
+# 日志
+logs/
+*.log
 
 # IDE
 .vscode/
 .idea/
-.obsidian/
 *.swp
 *.swo
+*~
 
-# Local secrets (do not commit)
-config/config.yml
-config/accounts.yaml
-
-# OS
+# 操作系统
 .DS_Store
 Thumbs.db
+
+# 环境配置
+.env
+*.local

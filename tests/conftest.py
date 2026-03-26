@@ -28,9 +28,9 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from config.settings import Settings
-from utils._core.browser_manager import BrowserManager
+from utils.browser_manager import BrowserManager
 from utils.logger import logger
-from utils._core.test_formatter import TestResult, TestResultFormatter
+from utils.test_formatter import TestResult, TestResultFormatter
 
 
 # ============ 全局配置 ============
@@ -119,30 +119,6 @@ def logged_in_user(login_page):
     if not login_page.is_logged_in():
         pytest.fail("登录失败，请检查网络和账号状态")
     
-    yield login_page
-
-
-@pytest.fixture(scope="function")
-def logged_in_admin(login_page):
-    """已登录的管理员身份 fixture"""
-    import time
-    logger.info("自动登录（管理员身份）...")
-    login_page.open_login()
-    login_page.login(
-        username="T100002",
-        password="wisedu@1",
-        verify_code="2222"
-    )
-    for i in range(8):
-        time.sleep(0.5)
-        if login_page.is_identity_select_visible():
-            login_page.select_identity_if_needed("信息中心管理员")
-            time.sleep(0.5)
-            break
-        if "login" not in login_page.page.url:
-            break
-    if not login_page.is_logged_in():
-        pytest.fail("登录失败")
     yield login_page
 
 

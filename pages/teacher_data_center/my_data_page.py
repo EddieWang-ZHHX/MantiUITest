@@ -26,7 +26,7 @@ class MyDataPage(BasePage):
     
     def navigate_to(self) -> "MyDataPage":
         """导航到我的数据页面"""
-        return self.open("/index#/jssjzx/grsjzx/myarchive")
+        return self.open("/index#/jssjzx/grsjzx/myarchive/myarchive")
     
     def is_visible(self) -> bool:
         """检查页面是否可见"""

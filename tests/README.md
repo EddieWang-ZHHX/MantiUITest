@@ -1,150 +1,122 @@
-# 测试用例编写指南
+# 测试用例说明
 
-## 标准测试用例模板
+## 📁 测试文件组织
 
-每个测试用例必须包含以下结构：
+```
+tests/
+├── conftest.py              # Pytest 配置和 fixtures
+├── test_00_login.py         # 登录测试
+├── test_01_my_data.py       # 我的数据测试
+├── test_02_data_query.py    # 数据查询测试（待创建）
+├── test_03_teacher_manage.py # 教师数据管理测试（待创建）
+└── ...
+```
 
+## 🚀 运行测试
+
+### 运行所有测试
+```bash
+cd C:\11_UITest
+pytest
+```
+
+### 运行登录测试
+```bash
+pytest tests/test_00_login.py -v
+```
+
+### 运行我的数据测试
+```bash
+pytest tests/test_01_my_data.py -v
+```
+
+### 运行特定测试
+```bash
+pytest tests/test_00_login.py::TestLogin::test_login_success -v
+```
+
+### 生成 HTML 报告
+```bash
+pytest --html=reports/report.html --self-contained-html
+```
+
+### 查看报告
+```bash
+start reports/report.html
+```
+
+## 📝 当前测试用例
+
+### test_00_login.py - 登录测试
+
+| 用例 ID | 测试名称 | 优先级 | 状态 |
+|--------|---------|--------|------|
+| TC-LOGIN-001 | 验证登录功能正常 | P1 | ✅ 已实现 |
+| TC-LOGIN-002 | 验证错误密码登录失败 | P2 | ✅ 已实现 |
+
+### test_01_my_data.py - 我的数据测试
+
+| 用例 ID | 测试名称 | 优先级 | 状态 |
+|--------|---------|--------|------|
+| TC-MYDATA-001 | 验证我的数据页面可访问 | P1 | ✅ 已实现 |
+| TC-MYDATA-002 | 验证模块可以展开和收起 | P2 | ✅ 已实现 |
+
+## 🔧 Fixtures 说明
+
+### `login_page`
+登录页面对象，用于执行登录操作。
+
+### `logged_in_user`
+已登录用户 fixture，自动执行登录，后续测试可以直接使用。
+
+### `my_data_page`
+我的数据页面对象，用于访问和操作我的数据页面。
+
+## ⚠️ 注意事项
+
+1. **元素定位器可能需要调整** - 当前的 CSS selectors 是猜测的，需要根据实际页面调整
+2. **第一次运行可能失败** - 因为元素定位器可能不准确，需要调试
+3. **查看日志** - 测试失败时查看 `logs/test.log` 了解详细信息
+
+## 🐛 调试方法
+
+### 1. 查看元素定位器
+打开浏览器开发者工具（F12），检查实际元素的 ID/Class
+
+### 2. 修改定位器
+在对应的 page 文件中修改元素定位器：
 ```python
-def test_xxx(self, page):
-    """
-    TC-XXX-001: 测试用例标题
-
-    【验证方式】（必须填写 — 如何判断这个功能"工作正常"）
-    验证点 1: [具体验证什么]
-    验证点 2: [具体验证什么]
-    验证点 3: [具体验证什么]
-
-    前置条件:
-    - 条件 1
-    - 条件 2
-
-    测试步骤:
-    1. 步骤 1
-    2. 步骤 2
-
-    预期结果:
-    - 结果 1
-    - 结果 2
-
-    失败自检清单 (Critical / Warning / Note):
-    Critical:
-      - [ ] 定位器是否在页面分析文档里验证过？
-      - [ ] 预期结果是否符合实际页面能力？
-    Warning:
-      - [ ] 测试是否独立（不依赖其他用例的状态）？
-      - [ ] 测试数据是否稳定（不会被其他测试修改）？
-    Note:
-      - [ ] 证据收集配置是否正确？
-      - [ ] 是否有对应的页面分析文档？
-    """
-    # 测试代码...
+USERNAME_INPUT = "#actual_username_id"  # 修改这里
 ```
 
-## 为什么要写"验证方式"
+### 3. 重新运行测试
+```bash
+pytest tests/test_00_login.py -v -s
+```
 
-> **Evidence over claims** — Superpowers 核心理念
-
-"测试通过了"不是证据。能说清楚"**怎么验证它工作正常**"才是证据。
-
-**错误写法**：
+### 4. 截图调试
+在测试中添加截图：
 ```python
-# 验证登录成功
-login_page.login("T100002", "wisedu@1", "2222")
-assert login_page.is_logged_in()  # 什么叫"登录成功"？判断标准是什么？
+def test_debug(page):
+    page.screenshot(path="debug.png")
 ```
 
-**正确写法**：
-```python
-# 验证登录成功
-login_page.login("T100002", "wisedu@1", "2222")
+## 📊 下一步计划
 
-# 验证方式（必须全部满足）：
-# 1. URL 从 /login 跳转到包含 /dataapp/ 且不含 login
-# 2. 页面包含"我的数据"或"退出"按钮
-# 3. 无错误提示弹窗
-assert "/login" not in login_page.page.url, "URL 仍在登录页"
-assert login_page.is_visible("text=退出", "退出按钮")
-assert not login_page.is_visible(".error-message", "无错误提示")
-```
+1. ✅ 登录测试 - 已完成
+2. ✅ 我的数据页面访问 - 已完成
+3. ⏳ 数据校验测试 - 待开发
+4. ⏳ 教师数据查询测试 - 待开发
+5. ⏳ 教师数据管理测试 - 待开发
 
-## 验证点来源
+## 💡 提示
 
-验证点必须来自**页面分析文档**，不是猜测。
+- 测试失败时不要慌，先查看日志和错误信息
+- 元素定位器需要逐步调试，这是正常的
+- 每个测试都是独立的，可以单独运行
+- 使用 `-s` 参数可以看到 print 输出
+- 使用 `--tb=short` 可以简化错误堆栈
 
-每个验证点格式：
-```
-验证点 N: [具体验证什么] + [在哪里找到这个验证标准]
-```
+---
 
-示例：
-```
-验证点 1: 登录后 URL 跳转到 /dataapp/ (来自 docs/页面分析/登录页面分析.md "页面跳转逻辑")
-验证点 2: 页面包含用户昵称或"退出"按钮 (来自页面实际渲染)
-验证点 3: 30 秒内完成跳转，无 loading 一直显示 (来自性能要求)
-```
-
-## 失败自检清单
-
-每次测试失败后，先执行自检再开始 debug：
-
-### Critical（阻塞性问题，必须修复才能继续）
-- [ ] **定位器是否在页面分析文档里验证过？**
-  - 如果没有 → 先去分析页面，再继续
-- [ ] **预期结果是否符合实际页面能力？**
-  - 如果文档过时 → 先更新文档
-- [ ] **页面是否有权限限制或特殊状态？**
-  - 如果是 → 先解决权限问题
-
-### Warning（可能导致后续问题）
-- [ ] **测试是否独立（不依赖其他用例的状态）？**
-  - 如果不是 → 考虑使用独立的测试数据或 teardown
-- [ ] **测试数据是否会被其他测试修改？**
-  - 如果会 → 使用唯一测试数据
-
-### Note（改进项）
-- [ ] **证据收集配置是否正确？** (trace: always, screenshot: always)
-- [ ] **是否有对应的页面分析文档？**
-- [ ] **是否有超时设置？（网络慢时需要）**
-
-## 测试数据管理
-
-所有测试数据必须在 `test_data/` 目录下管理，禁止硬编码：
-
-```yaml
-# test_data/accounts.yaml
-accounts:
-  valid:
-    username: T100002
-    password: wisedu@1
-    verify_code: "2222"
-  invalid_password:
-    username: T100002
-    password: wrong_password
-    verify_code: "2222"
-```
-
-## 调试流程（使用 debugger.py）
-
-```python
-from utils.debugger import StructuredDebugger
-
-def test_xxx_failure_debug(page):
-    """测试失败时使用结构化 debug"""
-    debugger = StructuredDebugger("test_xxx")
-    debugger.collect()
-    debugger.suggest_hypotheses("login")  # 或 "navigation", "assertion"
-    debugger.report()
-```
-
-## 快速自检命令
-
-```powershell
-# 运行测试并自动打开 trace 查看器
-pytest tests/test_00_login.py::TestLogin::test_login_success --trace
-
-# 只运行上次失败的测试
-pytest --lf
-
-# 慢速执行（便于观察）
-pytest --headed --slowmo=500
-```
+**开始运行第一个测试吧！** 🦐

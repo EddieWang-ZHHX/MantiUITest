@@ -32,7 +32,6 @@ class LoginPage(BasePage):
     
     def __init__(self, page: Page, base_url: str = ""):
         super().__init__(page, base_url)
-        self._login_failed = False  # 登录失败标志（错误密码时检测到Toast）
     
     def open_login(self) -> "LoginPage":
         """打开登录页面"""
@@ -62,17 +61,10 @@ class LoginPage(BasePage):
         
         # 等待登录响应（关键：需要等待页面跳转或弹窗）
         import time
-        login_failed = False
         for i in range(10):
             time.sleep(0.5)
             current_url = self.page.url
             logger.info(f"等待登录... ({i+1}/10) URL: {current_url}")
-            
-            # 如果检测到错误提示 Toast（role=alert）
-            if self.is_visible('[role="alert"]', "错误提示Toast"):
-                logger.info("检测到错误提示 Toast：用户名或密码错误")
-                login_failed = True
-                break
             
             # 如果检测到身份选择对话框
             if "您有多身份" in self.page.content():
@@ -83,15 +75,6 @@ class LoginPage(BasePage):
             if "login" not in current_url:
                 logger.info(f"URL 已变化：{current_url}")
                 break
-        
-        # 如果检测到登录失败（错误密码），直接返回
-        if login_failed:
-            logger.info("登录失败：用户名或密码错误")
-            self._login_failed = True
-            return self
-        
-        self._login_failed = False
-        return self
         
         # 处理身份选择
         if self.is_identity_select_visible():
