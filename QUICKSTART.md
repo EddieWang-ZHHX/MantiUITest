@@ -18,7 +18,7 @@ playwright install-deps
 
 ## 2️⃣ 配置测试
 
-编辑 [`config/config.yaml`](file:///C:/11_UITest/config/config.yaml)：
+编辑 [`config/config.yml`](file:///C:/11_UITest/config/config.yml)：
 
 ```yaml
 test:
@@ -103,7 +103,7 @@ pytest tests/test_my_feature.py -v
 ```
 C:\11_UITest/
 ├── config/           # 配置文件
-│   └── config.yaml   # 主配置（修改这里！）
+│   └── config.yml   # 主配置（修改这里！）
 ├── pages/            # 页面对象（POM 模式）
 │   ├── base_page.py  # 页面基类
 │   └── example_page.py
@@ -125,7 +125,7 @@ C:\11_UITest/
 A: 运行 `playwright install` 安装浏览器
 
 ### Q: 测试超时？
-A: 在 `config/config.yaml` 增加 `timeout` 值
+A: 在 `config/config.yml` 增加 `timeout` 值
 
 ### Q: 如何调试？
 A: 在测试中加 `import pdb; pdb.set_trace()` 或使用 `--pdb` 参数

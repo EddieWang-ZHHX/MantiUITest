@@ -9,7 +9,7 @@ class Settings:
     
     def __init__(self, config_path: str = None):
         if config_path is None:
-            config_path = Path(__file__).parent / "config.yaml"
+            config_path = Path(__file__).parent / "config.yml"
         
         self.config_path = Path(config_path)
         self.config = self._load_config()

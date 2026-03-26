@@ -30,10 +30,8 @@ htmlcov/
 .tox/
 .nox/
 
-# 测试报告
+# 测试报告和证据
 reports/
-allure-results/
-*.html
 
 # 日志
 logs/
@@ -46,12 +44,8 @@ logs/
 *.swp
 *.swo
 *~
-# Local secrets (do not commit)
-config/config.yml
-config/accounts.yaml
 
 # OS
-# 操作系统
 .DS_Store
 Thumbs.db
 
@@ -59,7 +53,21 @@ Thumbs.db
 .env
 *.local
 
-# 文件
-docs
+# docs 目录（已跟踪的除外）
+docs/
+
+# 配置文件（敏感信息）
+config/config.yml
+config/accounts.yaml
+
+# markdown 文件（保留项目必要的）
+# 注意：下面的规则会覆盖此行
 *.md
-02teapub
+# 取消忽略必要的 markdown 文件
+!README.md
+!QUICKSTART.md
+!tests/README.md
+!reports/README.md
+
+# scripts 目录
+scripts/__pycache__/
