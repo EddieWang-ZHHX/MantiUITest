@@ -172,16 +172,26 @@ class BrowserManager:
             except Exception as e:
                 logger.error(f"保存 Trace 失败：{e}")
 
-        # 4. 视频（page.video.save_as() 保存到目标路径）
+        # 4. 视频（先获取路径，关闭 page，再 copy 避免截断）
         if should_save('video') and self.page and hasattr(self.page, 'video') and self.page.video:
             try:
                 vp = evidence_dir / self.VIDEO
-                if vp.exists():
-                    vp.unlink()
-                self.page.video.save_as(path=str(vp))
-                if vp.exists():
-                    result["video"] = str(vp)
-                    logger.info(f"视频已保存：{vp} ({vp.stat().st_size / 1024:.1f} KB)")
+                # 先获取当前视频路径（page close 前有效）
+                video_src_path = self.page.video.path()
+                # 关闭 page 后视频文件才完整
+                self.page.close()
+                self.page = None
+                import shutil
+                # 等待文件写完（Windows 需要）
+                import time
+                time.sleep(0.5)
+                if video_src_path and Path(video_src_path).exists():
+                    shutil.copy2(video_src_path, str(vp))
+                    if vp.exists():
+                        result["video"] = str(vp)
+                        logger.info(f"视频已保存：{vp} ({vp.stat().st_size / 1024:.1f} KB)")
+                else:
+                    logger.error(f"保存视频失败：视频文件不存在 {video_src_path}")
             except Exception as e:
                 logger.error(f"保存视频失败：{e}")
 

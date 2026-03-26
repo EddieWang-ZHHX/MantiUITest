@@ -1,4 +1,4 @@
-# UI 自动化测试配置文件
+# UI 自动化测试配置文件（示例配置）
 
 # 浏览器配置
 browser:
@@ -25,9 +25,9 @@ evidence:
   video: always
   # 截图：always / on_failure / never
   screenshot: always
-  # 保存页面 HTML: true / false
+  # 保存页面 HTML: always / on_failure / never
   page_html: always
-  # 录制 Playwright Trace: true / false (最详细，包含所有 DOM 快照、网络请求等)
+  # 录制 Playwright Trace: always / on_failure / never (最详细，包含所有 DOM 快照、网络请求等)
   trace: always
   
 # 日志配置
@@ -44,8 +44,8 @@ log:
 auth:
   login_url: /login
   default_username: T100002
-  default_password: wisedu@1
-  default_verify_code: 2222
+  default_password: <你的密码>
+  default_verify_code: <验证码>
   default_group: 信息中心管理员
 
 # 页面路径
@@ -63,12 +63,6 @@ report:
   output_dir: reports
   open_report: true
 
-# 日志配置
-log:
-  level: INFO  # DEBUG, INFO, WARNING, ERROR
-  file: logs/test.log
-  console: true
-
 # 测试数据
 data:
   environment: test  # dev, test, staging, prod
@@ -80,9 +74,9 @@ ocr:
   prefer: baidu
   # 百度 OCR API（高精度，有配额限制）
   baidu:
-    api_key: Kt36FlZ0TTePhdFvKFNb2nmi
-    secret_key: CpJ6AfEbzu0e011JGjrQENWHDQxNQc3S
+    api_key: <你的百度 OCR api_key>
+    secret_key: <你的百度 OCR secret_key>
   # 本地 Tesseract（免费、离线，但中文识别较差）
   local:
     enabled: true
-    tesseract_path: C:\Program Files\Tesseract-OCR\tesseract.exe
+    tesseract_path: <你的 tesseract 安装路径>
