@@ -28,9 +28,9 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from config.settings import Settings
-from utils.browser_manager import BrowserManager
+from utils._core.browser_manager import BrowserManager
 from utils.logger import logger
-from utils.test_formatter import TestResult, TestResultFormatter
+from utils._core.test_formatter import TestResult, TestResultFormatter
 
 
 # ============ 全局配置 ============

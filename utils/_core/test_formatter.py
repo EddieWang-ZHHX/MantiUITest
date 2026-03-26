@@ -30,9 +30,7 @@ class TestResult:
     traceback: Optional[str] = None
     test_class: Optional[str] = None
     timestamp: Optional[str] = None
-    nodeid: Optional[str] = None  # 完整路径，用于模块分组
-    docstring: Optional[str] = None  # 用例描述
-
+    
     def __post_init__(self):
         if self.timestamp is None:
             self.timestamp = datetime.now().isoformat()
