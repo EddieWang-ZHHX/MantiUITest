@@ -23,6 +23,10 @@ venv/
 *.swp
 *.swo
 
+# Local secrets (do not commit)
+config/config.yml
+config/accounts.yaml
+
 # OS
 .DS_Store
 Thumbs.db
