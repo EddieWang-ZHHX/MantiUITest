@@ -96,7 +96,7 @@ def page(browser_manager, request):
 @pytest.fixture(scope="function")
 def base_url(settings):
     """获取基础 URL"""
-    return settings.test.get('base_url', '')
+    return settings.base_url
 
 
 # ============ 登录相关 fixtures ============
@@ -641,3 +641,87 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         junit_output = Path("reports/test-results.xml")
         junit_output.parent.mkdir(parents=True, exist_ok=True)
         junit_output.write_text(TestResultFormatter.to_junit_xml(results), encoding='utf-8')
+
+
+# ========================================================================
+# 页面健康度监控集成
+# ========================================================================
+
+from utils.page_health_monitor import get_page_health_monitor
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """
+    测试结果钩子 - 自动记录页面健康度
+    """
+    outcome = yield
+    report = outcome.get_result()
+    
+    # 只在测试调用阶段记录
+    if call.when == "call":
+        test_name = item.name
+        # 提取模块名: tests.common.test_00_login -> common
+        module_parts = item.module.__name__.split(".")
+        test_module = module_parts[1] if len(module_parts) > 1 else "common"
+        
+        # 从测试名称推断页面名称
+        page_name = _infer_page_name(test_name, test_module)
+        
+        # 从配置获取 URL
+        url = _get_page_url(item, test_module, page_name)
+        
+        # 记录到健康度监控器
+        monitor = get_page_health_monitor()
+        monitor.record_test(
+            module=test_module,
+            page_name=page_name,
+            url=url,
+            success=report.passed
+        )
+
+
+def _infer_page_name(test_name: str, test_module: str) -> str:
+    """从测试名称推断页面名称"""
+    name = test_name.replace("test_", "")
+    
+    patterns = {
+        "login": "login",
+        "my_data": "my_data",
+        "view_data": "my_data",
+        "grade": "grade",
+        "report": "report",
+        "export": "export",
+    }
+    
+    for pattern, page_name in patterns.items():
+        if pattern in name:
+            return page_name
+    
+    return test_module.split(".")[-1]
+
+
+def _get_page_url(item, test_module: str, page_name: str) -> str:
+    """获取页面 URL"""
+    try:
+        from config.settings import Settings
+        settings = Settings()
+        base_url = settings.base_url
+    except:
+        base_url = "http://localhost"
+    
+    return f"{base_url}/{test_module}/{page_name}"
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_sessionfinish(session, exitstatus):
+    """测试会话结束钩子 - 自动生成健康度报告"""
+    monitor = get_page_health_monitor()
+    
+    # 只有在有记录时才生成报告
+    if monitor.pages:
+        report = monitor.generate_health_report()
+        report_path = Path("reports/page_health/health_report.md")
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(report, encoding='utf-8')
+        print(f"\n📊 页面健康度报告: {report_path}")

@@ -71,3 +71,9 @@ config/accounts.yaml
 
 # scripts 目录
 scripts/__pycache__/
+
+# AI 工作记忆
+.workbuddy/
+
+# 参考代码
+reference/

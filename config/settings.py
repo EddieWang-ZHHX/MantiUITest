@@ -44,9 +44,45 @@ class Settings:
         return self.get('test', {})
     
     @property
+    def environments(self) -> dict:
+        """多环境配置"""
+        return self.get('environments', {})
+    
+    @property
+    def active_environment(self) -> str:
+        """当前激活的环境名称"""
+        return self.environments.get('active', '104')
+    
+    @property
+    def current_env(self) -> dict:
+        """当前环境的完整配置"""
+        env_name = self.active_environment
+        return self.environments.get(env_name, {})
+    
+    @property
+    def base_url(self) -> str:
+        """当前环境的 base_url"""
+        return self.current_env.get('base_url', '')
+    
+    @property
+    def pages(self) -> dict:
+        """当前环境的页面路径配置"""
+        return self.current_env.get('pages', {})
+    
+    @property
     def report(self) -> dict:
         return self.get('report', {})
     
     @property
     def log(self) -> dict:
         return self.get('log', {})
+    
+    @property
+    def llm(self) -> dict:
+        """LLM 配置"""
+        return self.get('llm', {})
+    
+    @property
+    def evolution(self) -> dict:
+        """工具进化配置"""
+        return self.get('evolution', {})

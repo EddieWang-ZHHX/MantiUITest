@@ -17,8 +17,10 @@
         print("建议合并")
 """
 from typing import Tuple
+from utils.evolution.decorator import evolution_monitor
 
 
+@evolution_monitor("page_analyzer.quick_evaluate")
 def quick_evaluate(page1_url: str, page2_url: str, 
                    page1_func: str, page2_func: str,
                    page1_elements: int = 10, page2_elements: int = 10,
